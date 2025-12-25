@@ -57,9 +57,13 @@ type QueueCheck struct {
 }
 
 type ServerCheck struct {
-	OK     bool    `json:"ok"`
-	CPU    float64 `json:"cpu"`
-	Memory float64 `json:"memory"`
+	OK        bool    `json:"ok"`
+	CPUModel  string  `json:"cpuModel"`
+	CPUCores  int     `json:"cpuCores"`
+	MemTotal  int64   `json:"memTotal"`
+	FSUsed    int64   `json:"fsUsed"`
+	FSTotal   int64   `json:"fsTotal"`
+	FSPercent float64 `json:"fsPercent"`
 }
 
 func runCheck(ctx context.Context, baseURL, token string) *CheckResult {
@@ -246,25 +250,35 @@ func fetchServerInfo(ctx context.Context, baseURL, token string) (*ServerCheck, 
 	}
 
 	var data struct {
-		CPU float64 `json:"cpu"`
+		CPU struct {
+			Model string `json:"model"`
+			Cores int    `json:"cores"`
+		} `json:"cpu"`
 		Mem struct {
-			Used  int64 `json:"used"`
 			Total int64 `json:"total"`
 		} `json:"mem"`
+		FS struct {
+			Total int64 `json:"total"`
+			Used  int64 `json:"used"`
+		} `json:"fs"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		return nil, err
 	}
 
-	memPercent := 0.0
-	if data.Mem.Total > 0 {
-		memPercent = float64(data.Mem.Used) / float64(data.Mem.Total) * 100
+	fsPercent := 0.0
+	if data.FS.Total > 0 {
+		fsPercent = float64(data.FS.Used) / float64(data.FS.Total) * 100
 	}
 
 	return &ServerCheck{
-		OK:     true,
-		CPU:    data.CPU,
-		Memory: memPercent,
+		OK:        true,
+		CPUModel:  data.CPU.Model,
+		CPUCores:  data.CPU.Cores,
+		MemTotal:  data.Mem.Total,
+		FSUsed:    data.FS.Used,
+		FSTotal:   data.FS.Total,
+		FSPercent: fsPercent,
 	}, nil
 }
 
@@ -309,7 +323,9 @@ func printCheckText(r *CheckResult) {
 	}
 
 	if r.Server != nil {
-		fmt.Printf("Server      OK    cpu:%.1f%% mem:%.1f%%\n", r.Server.CPU, r.Server.Memory)
+		memGB := float64(r.Server.MemTotal) / (1024 * 1024 * 1024)
+		fmt.Printf("Server      OK    %s (%d cores) mem:%.1fGB disk:%.1f%%\n",
+			r.Server.CPUModel, r.Server.CPUCores, memGB, r.Server.FSPercent)
 	}
 }
 
