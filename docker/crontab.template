@@ -1,0 +1,11 @@
+# yamisskey-doctor scheduled tasks
+# Runs verify on latest backup daily at 6:00 AM (after backup at 3:00/15:00)
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Verify latest backup daily
+0 6 * * * root /usr/local/bin/yamisskey-doctor verify --latest --force >> /var/log/cron.log 2>&1
+
+# Optional: Health check every 5 minutes (uncomment if needed)
+# */5 * * * * root /usr/local/bin/yamisskey-doctor check ${CHECK_URL} --quiet || curl -X POST -F content="Misskey health check failed" ${DISCORD_WEBHOOK_URL} 2>/dev/null

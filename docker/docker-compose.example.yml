@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  # Scheduled verify (runs daily at 6:00 AM)
+  yamisskey-doctor:
+    build: ..
+    container_name: yamisskey-doctor
+    restart: unless-stopped
+    environment:
+      - MODE=cron
+      - TZ=Asia/Tokyo
+      # Storage settings (same as yamisskey-backup)
+      - STORAGE_TYPE=r2
+      - R2_PREFIX=backups
+      # - STORAGE_TYPE=linode
+      # - LINODE_BUCKET=yamisskey-backup
+      # - LINODE_PREFIX=backups
+      # PostgreSQL settings
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=misskey
+      - POSTGRES_DB=mk1
+      - PGPASSWORD=${PGPASSWORD}
+      # Discord notification (optional)
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+    volumes:
+      # Share rclone config with yamisskey-backup
+      - ./config/rclone.conf:/root/.config/rclone/rclone.conf:ro
+      - ./config/.env:/config/.env:ro
+    networks:
+      - misskey-network
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  misskey-network:
+    external: true
